@@ -1,21 +1,43 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { AlegraSoccerTeamStack } from '../lib/alegra-soccer-team-stack';
+import { DynamoStack } from '../lib/dynamo-stack';
+import { ApiStack } from '../lib/api-stack';
+import { LambdaStack } from '../lib/lambda-stack';
 
 const app = new cdk.App();
-new AlegraSoccerTeamStack(app, 'AlegraSoccerTeamStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
+const env = app.node.tryGetContext("env");
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+const sharedProps = {
+  env: env,
+  account: "139202473377", // training ledger
+  region: "us-east-1",
+};
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
 
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+
+if (["test", "prod"].indexOf(env) === -1) {
+  throw Error("Env not supported");
+}
+
+const appName = "alegra-soccer-team";
+
+const dynamoStack = new DynamoStack(app, 'DynamoStack', {
+  ...sharedProps,
+  name: `${appName}-dynamo-${env}`,
 });
+
+
+const lambdaStack = new LambdaStack(app, 'LambdaStack', {
+  ...sharedProps,
+  name: `${appName}-lambda-${env}`,
+  dynamoStack: dynamoStack,
+});
+
+new ApiStack(app, 'ApiStack', {
+  ...sharedProps,
+  name: `${appName}-api-${env}`,
+  lambdaStack: lambdaStack
+});
+
+
